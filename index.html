@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoTrack AI 2.0 | 대한민국 기후에너지환경부 배출가스 AI 분석 앱</title>
+  <!-- Tailwind CSS & Chart.js 로드 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Inter 및 한글 폰트 스타일 설정 -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans KR', 'Inter', sans-serif;
+      background-color: #f1f5f3;
+      color: #1e293b;
+    }
+    .gov-gradient {
+      background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+    }
+    .tab-active {
+      background-color: #1b4332 !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 10px rgba(27, 67, 50, 0.25);
+    }
+    /* 스크롤바 커스텀 */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- 상단 정부 헤더 -->
+  <header class="gov-gradient text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <div class="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold tracking-wide mb-2">
+            <span>🌿 대한민국 기후에너지환경부 · 탄소중립 AI 행정지원 시제품</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">EcoTrack AI 2.0</h1>
+          <p class="text-emerald-100 text-xs sm:text-sm mt-1">자동차 배출가스 규제 기준 비교 및 AI 기반 검사결과 분석 웹 애플리케이션</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs bg-black/20 px-3.5 py-2 rounded-xl border border-white/10 self-start md:self-auto">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>실제 공공데이터 3종 내장 완료 (즉시 실행 가능)</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 컨테이너 -->
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1">
+    
+    <!-- 상단 중요 범위 안내 경고 배너 -->
+    <div class="bg-amber-50 border-l-4 border-amber-500 rounded-xl p-4 mb-6 shadow-sm">
+      <div class="flex items-start gap-3">
+        <span class="text-xl leading-none mt-0.5">⚠️</span>
+        <div class="text-xs sm:text-sm text-amber-950 leading-relaxed">
+          <strong class="font-bold text-amber-900">중요한 범위 안내:</strong> 이 앱은 교육·연구용 시제품입니다. 도로 원격측정값(RSD)을 법정 검사 기준에 직접 대입하지 않습니다. 제공된 운행차 기준 파일은 <strong>부하검사(ASM-Idling / KD-147)</strong> 기준 샘플이며, 제공된 검사 측정 파일은 <strong>자동차관리법상 무부하검사</strong> 샘플입니다. 두 파일의 검사 방법이 다르므로 서로 직접 비교해 법적 적합·부적합이나 행정처분을 자동 판정하지 않습니다.
+        </div>
+      </div>
+    </div>
+
+    <!-- 4-탭 네비게이션 -->
+    <nav class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-6" role="tablist">
+      <button id="tab-btn-0" onclick="switchTab(0)" class="tab-btn tab-active bg-white text-[#1b4332] hover:bg-emerald-50 font-bold py-3 px-4 rounded-xl text-xs sm:text-sm transition-all border border-emerald-900/10 flex items-center justify-center gap-2">
+        <span>① 규제 기준 판별 엔진</span>
+      </button>
+      <button id="tab-btn-1" onclick="switchTab(1)" class="tab-btn bg-white text-[#1b4332] hover:bg-emerald-50 font-bold py-3 px-4 rounded-xl text-xs sm:text-sm transition-all border border-emerald-900/10 flex items-center justify-center gap-2">
+        <span>② 검사 데이터 탐색</span>
+      </button>
+      <button id="tab-btn-2" onclick="switchTab(2)" class="tab-btn bg-white text-[#1b4332] hover:bg-emerald-50 font-bold py-3 px-4 rounded-xl text-xs sm:text-sm transition-all border border-emerald-900/10 flex items-center justify-center gap-2">
+        <span>③ AI 지도학습 &amp; 모델 평가</span>
+      </button>
+      <button id="tab-btn-3" onclick="switchTab(3)" class="tab-btn bg-white text-[#1b4332] hover:bg-emerald-50 font-bold py-3 px-4 rounded-xl text-xs sm:text-sm transition-all border border-emerald-900/10 flex items-center justify-center gap-2">
+        <span>④ 제작차 기준 &amp; 데이터 한계</span>
+      </button>
+    </nav>
+
+    <!-- =====================================================================
+         TAB 1: ① 규제 기준 판별 엔진
+    ====================================================================== -->
+    <section id="tab-panel-0" class="tab-panel space-y-6">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+        <div class="border-b border-slate-100 pb-4 mb-5">
+          <h2 class="text-lg sm:text-xl font-extrabold text-[#1b4332]">① 규제 기준 판별 엔진 (운행차 배출가스 허용기준)</h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">차량 제원·검사 조건 및 제작일·검사일에 해당하는 운행차 허용기준을 검색하고 측정값과 비교합니다.</p>
+        </div>
+
+        <!-- 조건 선택 그리드 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">검사 방식</label>
+            <select id="sel-test-type" onchange="lookupStandards()" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-[#2d6a4f] focus:outline-none">
+              <option value="부하검사(ASM-Idling)">부하검사(ASM-Idling)</option>
+              <option value="부하검사(KD-147)">부하검사(KD-147)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">연료</label>
+            <select id="sel-fuel" onchange="lookupStandards()" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-[#2d6a4f] focus:outline-none">
+              <option value="휘발유">휘발유</option>
+              <option value="휘발유(무연)">휘발유(무연)</option>
+              <option value="경유">경유</option>
+              <option value="엘피지">엘피지</option>
+              <option value="하이브리드(휘발유+전기)">하이브리드(휘발유+전기)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">차종</label>
+            <select id="sel-vehicle" onchange="lookupStandards()" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-[#2d6a4f] focus:outline-none">
+              <option value="승용경형">승용경형</option>
+              <option value="승용소형">승용소형</option>
+              <option value="승용중형">승용중형</option>
+              <option value="화물소형">화물소형</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">자동차 제작일</label>
+            <input type="date" id="inp-mfg-date" value="2012-06-15" onchange="lookupStandards()" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium focus:border-[#2d6a4f] focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">검사 기준일</label>
+            <input type="date" id="inp-insp-date" value="2026-11-20" onchange="lookupStandards()" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium focus:border-[#2d6a4f] focus:outline-none" />
+          </div>
+        </div>
+
+        <!-- 기준 검색 결과 표시 영역 -->
+        <div id="std-match-banner" class="mb-4"></div>
+
+        <!-- 다중 기준 선택기 (일치 항목이 2개 이상일 경우 표시) -->
+        <div id="std-multi-selector" class="hidden mb-4 bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200">
+          <label class="block text-xs font-bold text-[#1b4332] mb-1.5">검토할 적용 기준 행 선택 (교육용)</label>
+          <select id="sel-std-row" onchange="selectStandardRow()" class="w-full sm:w-auto rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs sm:text-sm font-semibold"></select>
+        </div>
+
+        <!-- 매칭된 허용기준 테이블 -->
+        <div class="overflow-x-auto rounded-xl border border-slate-200 mb-6">
+          <table class="w-full text-xs sm:text-sm text-center">
+            <thead class="bg-[#e8f0ec] text-[#1b4332] font-bold">
+              <tr>
+                <th class="py-3 px-3">검사방식</th>
+                <th class="py-3 px-3">연료</th>
+                <th class="py-3 px-3">차종</th>
+                <th class="py-3 px-3">제작일자 적용기간</th>
+                <th class="py-3 px-3">CO 기준(%)</th>
+                <th class="py-3 px-3">HC 기준(ppm)</th>
+                <th class="py-3 px-3">NOx 기준(ppm)</th>
+                <th class="py-3 px-3">매연 기준(%)</th>
+                <th class="py-3 px-3">적용법령</th>
+              </tr>
+            </thead>
+            <tbody id="std-table-body" class="divide-y divide-slate-100 bg-white"></tbody>
+          </table>
+        </div>
+
+        <!-- 측정값 입력 및 기준 비교 실행 -->
+        <div id="measure-section" class="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+            <div>
+              <h3 class="text-sm sm:text-base font-bold text-slate-800">측정값 입력 및 허용기준 대조</h3>
+              <p class="text-xs text-slate-500">선택한 검사 방식과 동일한 시험 절차·단위로 측정된 수치를 입력하세요.</p>
+            </div>
+            <button onclick="fillSampleMeasurement()" class="text-xs bg-white hover:bg-slate-100 text-[#2d6a4f] font-bold px-3 py-2 rounded-lg border border-slate-300 transition self-start">
+              ✨ 예시 측정값 자동 채우기
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+            <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+              <label class="block text-xs font-bold text-slate-600 mb-1">일산화탄소 (CO) 측정값</label>
+              <input type="number" id="m-co" step="0.1" min="0" value="0.0" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-400" />
+              <span id="lim-co-hint" class="text-[11px] text-emerald-700 font-medium mt-1 block">허용기준: -</span>
+            </div>
+            <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+              <label class="block text-xs font-bold text-slate-600 mb-1">탄화수소 (HC) 측정값</label>
+              <input type="number" id="m-hc" step="1" min="0" value="0" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-400" />
+              <span id="lim-hc-hint" class="text-[11px] text-emerald-700 font-medium mt-1 block">허용기준: -</span>
+            </div>
+            <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+              <label class="block text-xs font-bold text-slate-600 mb-1">질소산화물 (NOx) 측정값</label>
+              <input type="number" id="m-nox" step="1" min="0" value="0" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-400" />
+              <span id="lim-nox-hint" class="text-[11px] text-emerald-700 font-medium mt-1 block">허용기준: -</span>
+            </div>
+            <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+              <label class="block text-xs font-bold text-slate-600 mb-1">매연 (SMOKE) 측정값</label>
+              <input type="number" id="m-smoke" step="1" min="0" value="0" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-400" />
+              <span id="lim-smoke-hint" class="text-[11px] text-emerald-700 font-medium mt-1 block">허용기준: -</span>
+            </div>
+          </div>
+
+          <button onclick="evaluateStandards()" class="w-full sm:w-auto bg-[#1b4332] hover:bg-[#2d6a4f] text-white font-bold py-3 px-6 rounded-xl text-sm shadow-md transition">
+            🔍 기준 비교 실행
+          </button>
+
+          <!-- 판별 결과 출력 -->
+          <div id="eval-result-area" class="mt-5 hidden"></div>
+        </div>
+      </div>
+
+      <div class="bg-sky-50 border border-sky-200 rounded-xl p-4 text-xs sm:text-sm text-sky-900">
+        ℹ️ <strong>데이터 구조 안내:</strong> 제공된 운행차 허용기준 샘플에는 부하검사(ASM-Idling)와 부하검사(KD-147) 기준이 수록되어 있습니다. 내장된 무부하검사 샘플과 검사 방식이 다르므로 이 화면에서 무부하검사 결과를 직접 대입해 판정하지 않습니다.
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         TAB 2: ② 검사 데이터 탐색
+    ====================================================================== -->
+    <section id="tab-panel-1" class="tab-panel hidden space-y-6">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-100 pb-4 mb-5">
+          <div>
+            <h2 class="text-lg sm:text-xl font-extrabold text-[#1b4332]">② 제공된 실제 무부하검사 데이터 탐색</h2>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">한국교통안전공단 자동차검사관리시스템 무부하검사 샘플(<strong>300행 × 6열</strong>)의 통계 및 분포를 탐색합니다.</p>
+          </div>
+          <button onclick="downloadInspectionCSV()" class="bg-[#2d6a4f] hover:bg-[#1b4332] text-white font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm shadow-sm transition self-start">
+            📥 무부하검사 샘플 CSV 다운로드 (300행)
+          </button>
+        </div>
+
+        <!-- 항목 선택 및 요약 KPI -->
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6 items-end">
+          <div class="lg:col-span-2">
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">분포를 확인할 측정 항목 선택</label>
+            <select id="sel-explore-col" onchange="updateExploration()" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-bold text-[#1b4332] focus:border-[#2d6a4f] focus:outline-none">
+              <option value="일산화탄소데이터">일산화탄소데이터 (CO)</option>
+              <option value="탄화수소데이터">탄화수소데이터 (HC - 저속)</option>
+              <option value="이산화탄소데이터">이산화탄소데이터 (CO₂)</option>
+              <option value="산소데이터">산소데이터 (O₂)</option>
+              <option value="공기과잉률데이터">공기과잉률데이터 (Lambda)</option>
+            </select>
+          </div>
+          <div class="bg-[#f1f5f3] p-3.5 rounded-xl border border-emerald-900/10">
+            <div class="text-[11px] font-bold text-slate-500">평균 (Mean)</div>
+            <div id="kpi-mean" class="text-xl font-extrabold text-[#1b4332] mt-0.5">-</div>
+          </div>
+          <div class="bg-[#f1f5f3] p-3.5 rounded-xl border border-emerald-900/10">
+            <div class="text-[11px] font-bold text-slate-500">중앙값 (Median)</div>
+            <div id="kpi-median" class="text-xl font-extrabold text-[#2d6a4f] mt-0.5">-</div>
+          </div>
+          <div class="bg-[#f1f5f3] p-3.5 rounded-xl border border-emerald-900/10">
+            <div class="text-[11px] font-bold text-slate-500">최솟값 / 최댓값</div>
+            <div id="kpi-minmax" class="text-lg font-extrabold text-slate-800 mt-0.5">-</div>
+          </div>
+        </div>
+
+        <!-- 히스토그램 차트 -->
+        <div class="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200 mb-6">
+          <div class="h-72 sm:h-80 w-full">
+            <canvas id="exploreChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 원본 데이터 미리보기 테이블 -->
+        <div>
+          <div class="flex items-center justify-between mb-2.5">
+            <h3 class="text-sm font-bold text-slate-800">📋 무부하검사 원본 데이터 미리보기 (상위 30건 / 전체 300건)</h3>
+            <span class="text-xs text-slate-500">※ 본 샘플에는 공식 적합/부적합 정답 라벨이 포함되어 있지 않습니다.</span>
+          </div>
+          <div class="overflow-x-auto max-h-80 rounded-xl border border-slate-200">
+            <table class="w-full text-xs sm:text-sm text-center">
+              <thead class="bg-[#e8f0ec] text-[#1b4332] font-bold sticky top-0">
+                <tr>
+                  <th class="py-2.5 px-3">연번</th>
+                  <th class="py-2.5 px-3">일산화탄소데이터</th>
+                  <th class="py-2.5 px-3">탄화수소데이터</th>
+                  <th class="py-2.5 px-3">무부하고속HC</th>
+                  <th class="py-2.5 px-3">이산화탄소데이터</th>
+                  <th class="py-2.5 px-3">산소데이터</th>
+                  <th class="py-2.5 px-3">공기과잉률데이터</th>
+                </tr>
+              </thead>
+              <tbody id="explore-table-body" class="divide-y divide-slate-100 bg-white"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         TAB 3: ③ AI 지도학습 & 모델 평가
+    ====================================================================== -->
+    <section id="tab-panel-2" class="tab-panel hidden space-y-6">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+        <div class="border-b border-slate-100 pb-4 mb-5">
+          <h2 class="text-lg sm:text-xl font-extrabold text-[#1b4332]">③ AI 지도학습: Random Forest 분류 모델</h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">실제 검사 결과(적합/부적합) 라벨이 포함된 학습용 CSV를 업로드하거나 교육용 라벨 데이터셋을 불러와 50개 결정트리 앙상블 모델을 학습·평가합니다.</p>
+        </div>
+
+        <!-- 데이터 한계 안내 -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-5 text-xs sm:text-sm text-amber-900">
+          ⚠️ <strong>지도학습 데이터 원칙:</strong> 내장된 무부하검사 샘플에는 확인 가능한 공식 적합/부적합 정답 열이 없으므로 임의로 정답을 합성하지 않습니다. 실제 결과 라벨이 있는 CSV를 업로드하거나 아래 <strong>[교육용 라벨 데이터셋 불러오기]</strong> 버튼으로 모델 학습 과정을 시연할 수 있습니다.
+        </div>
+
+        <!-- CSV 업로드 및 원클릭 교육용 데이터 로드 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div class="bg-slate-50 p-4 rounded-xl border border-dashed border-slate-300">
+            <label class="block text-xs font-bold text-slate-700 mb-2">📂 정답 라벨 포함 학습용 CSV 업로드</label>
+            <input type="file" id="ml-csv-upload" accept=".csv" onchange="handleMLFileUpload(event)" class="block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#2d6a4f] file:text-white hover:file:bg-[#1b4332] cursor-pointer" />
+            <p class="text-[11px] text-slate-500 mt-2">형식 예시: <code>CO,HC,CO2,O2,NOx,검사결과</code> (UTF-8 / CP949 지원)</p>
+          </div>
+          <div class="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 flex flex-col justify-between">
+            <div>
+              <div class="text-xs font-bold text-[#1b4332] mb-1">🎓 수행평가 시연용 원클릭 데이터</div>
+              <p class="text-xs text-slate-600">별도 CSV 파일이 없어도 즉시 Random Forest 학습과 혼동행렬을 테스트할 수 있도록 정제된 교육용 검사결과 데이터셋(120건)을 제공합니다.</p>
+            </div>
+            <button onclick="loadEducationalMLDataset()" class="mt-3 bg-[#1b4332] hover:bg-[#2d6a4f] text-white font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm shadow-sm transition self-start">
+              ✨ 교육용 라벨 데이터셋 불러오기 (120건)
+            </button>
+          </div>
+        </div>
+
+        <!-- 데이터 로드 후 설정 영역 -->
+        <div id="ml-config-box" class="hidden space-y-5">
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div class="flex items-center justify-between mb-2">
+              <span id="ml-data-summary" class="text-xs sm:text-sm font-bold text-[#1b4332]"></span>
+              <span class="text-xs text-slate-500">Train 75% / Test 25% 분할</span>
+            </div>
+            <div class="overflow-x-auto max-h-44 rounded-lg border border-slate-200 bg-white mb-4">
+              <table class="w-full text-xs text-center">
+                <thead id="ml-preview-head" class="bg-slate-100 font-bold text-slate-700"></thead>
+                <tbody id="ml-preview-body" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">정답(Target) 열 선택</label>
+                <select id="ml-target-col" onchange="renderMLFeatureCheckboxes()" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold"></select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">학습에 사용할 수치형 특성(Feature) 선택</label>
+                <div id="ml-feature-list" class="flex flex-wrap gap-2 bg-white p-2.5 rounded-xl border border-slate-300 min-h-[42px]"></div>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <button onclick="trainRandomForest()" class="bg-[#1b4332] hover:bg-[#2d6a4f] text-white font-bold py-3 px-6 rounded-xl text-sm shadow-md transition">
+                🚀 Random Forest 학습 및 성능 평가 실행 (50 Trees)
+              </button>
+            </div>
+          </div>
+
+          <!-- 학습 결과 출력 영역 -->
+          <div id="ml-results-area" class="hidden space-y-5">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl">
+                <div class="text-xs font-bold text-emerald-800">Accuracy (정확도)</div>
+                <div id="res-acc" class="text-2xl font-extrabold text-[#1b4332] mt-1">-</div>
+              </div>
+              <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl">
+                <div class="text-xs font-bold text-emerald-800">Precision (정밀도)</div>
+                <div id="res-prec" class="text-2xl font-extrabold text-[#1b4332] mt-1">-</div>
+              </div>
+              <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl">
+                <div class="text-xs font-bold text-emerald-800">Recall (재현율)</div>
+                <div id="res-rec" class="text-2xl font-extrabold text-[#1b4332] mt-1">-</div>
+              </div>
+              <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl">
+                <div class="text-xs font-bold text-emerald-800">F1-Score</div>
+                <div id="res-f1" class="text-2xl font-extrabold text-[#1b4332] mt-1">-</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <!-- 혼동행렬 테이블 -->
+              <div class="bg-white p-4 rounded-xl border border-slate-200">
+                <h4 class="text-sm font-bold text-slate-800 mb-3">📊 테스트 데이터 혼동행렬 (Confusion Matrix)</h4>
+                <div id="cm-table-container" class="overflow-x-auto"></div>
+              </div>
+              <!-- 변수 중요도 차트 -->
+              <div class="bg-white p-4 rounded-xl border border-slate-200">
+                <h4 class="text-sm font-bold text-slate-800 mb-3">🌲 Random Forest 특성 중요도 (Feature Importance)</h4>
+                <div class="h-52">
+                  <canvas id="mlImportanceChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         TAB 4: ④ 제작차 기준 & 데이터 한계
+    ====================================================================== -->
+    <section id="tab-panel-3" class="tab-panel hidden space-y-6">
+      <!-- 3종 공공데이터 요약 카드 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 border-t-4 border-t-[#1b4332]">
+          <div class="text-xs font-bold text-[#2d6a4f]">데이터셋 ① · 한국교통안전공단</div>
+          <h3 class="text-base font-extrabold text-slate-800 mt-1">무부하검사 배출가스 검사정보</h3>
+          <div class="text-2xl font-extrabold text-[#1b4332] my-2">300행 × 6열</div>
+          <p class="text-xs text-slate-500 leading-relaxed">자동차관리법에 의한 무부하검사 측정값(CO, HC, 무부하고속HC, CO₂, O₂, 공기과잉률) 샘플 자료</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 border-t-4 border-t-[#2d6a4f]">
+          <div class="text-xs font-bold text-[#2d6a4f]">데이터셋 ② · 한국교통안전공단</div>
+          <h3 class="text-base font-extrabold text-slate-800 mt-1">운행차 배출가스 허용기준</h3>
+          <div class="text-2xl font-extrabold text-[#1b4332] my-2">300행 × 17열</div>
+          <p class="text-xs text-slate-500 leading-relaxed">부하검사(ASM-Idling 290행, KD-147 10행) 방식의 연료·차종·제작일자별 법정 허용기준 샘플</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 border-t-4 border-t-emerald-600">
+          <div class="text-xs font-bold text-[#2d6a4f]">데이터셋 ③ · 국립환경과학원</div>
+          <h3 class="text-base font-extrabold text-slate-800 mt-1">자동차(제작차) 배출가스 허용기준</h3>
+          <div class="text-2xl font-extrabold text-[#1b4332] my-2">270행 × 15열</div>
+          <p class="text-xs text-slate-500 leading-relaxed">신차 제작·인증 단계에서 적용되는 배출시험 항목별(CO, HC, NOx, PM 등) 기준 정보</p>
+        </div>
+      </div>
+
+      <!-- 국립환경과학원 제작차 허용기준 미리보기 -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+        <div class="mb-4">
+          <h3 class="text-base sm:text-lg font-extrabold text-[#1b4332]">📘 기후에너지환경부 국립환경과학원 제작차 배출가스 인증기준 (참고표)</h3>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">제작·인증 단계의 시험기준으로, 운행 중인 차량의 정기검사 기준과 목적·시험방법이 다르므로 운행차 적합 판정에 직접 혼용하지 않습니다.</p>
+        </div>
+        <div class="overflow-x-auto max-h-72 rounded-xl border border-slate-200">
+          <table class="w-full text-xs sm:text-sm text-center">
+            <thead class="bg-[#e8f0ec] text-[#1b4332] font-bold sticky top-0">
+              <tr>
+                <th class="py-2.5 px-3">차종 구분</th>
+                <th class="py-2.5 px-3">연료 구분</th>
+                <th class="py-2.5 px-3">적용 기준 명</th>
+                <th class="py-2.5 px-3">배출시험 항목 명</th>
+                <th class="py-2.5 px-3">일산화탄소 기준</th>
+                <th class="py-2.5 px-3">탄화수소 기준</th>
+                <th class="py-2.5 px-3">질소산화물 기준</th>
+              </tr>
+            </thead>
+            <tbody id="mfg-table-body" class="divide-y divide-slate-100 bg-white"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 기술적 한계 및 공식 법령 링크 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+          <h3 class="text-base sm:text-lg font-extrabold text-[#1b4332] mb-3">⚠️ 중요한 기술적 한계 및 정책 적용 범위</h3>
+          <ul class="space-y-2.5 text-xs sm:text-sm text-slate-700 list-disc pl-5 leading-relaxed">
+            <li><strong>검사 방법 불일치:</strong> 운행차 기준 샘플은 <code>ASM-Idling</code> 및 <code>KD-147</code> 부하검사 기준이며, 검사 측정 샘플은 자동차관리법상 <code>무부하검사</code> 자료이므로 두 파일을 직접 대조해 판정하지 않습니다.</li>
+            <li><strong>메타데이터 및 라벨 한계:</strong> 내장된 무부하검사 샘플에는 차량별 연료·제작연도·공식 적합/부적합 라벨이 연결되어 있지 않습니다.</li>
+            <li><strong>AI 지도학습 요건:</strong> 지도학습 모델은 동일한 검사방법으로 측정된 실제 데이터와 공식 검사결과 라벨을 확보한 뒤 학습해야 합니다.</li>
+            <li><strong>도로 원격측정(RSD) 검증 필요:</strong> 도로 주행 중 원격측정 데이터는 검사장 정지·부하 시험과 측정 환경이 다르므로 별도 보정 및 검증 절차 없이 법정 검사기준에 직접 대입할 수 없습니다.</li>
+            <li><strong>행정처분 비자동화:</strong> 본 시스템은 단속·행정처분을 자동 결정하지 않으며, 정밀검사 우선순위 선별 및 공식 확인 절차를 지원하는 정책 참고 도구입니다.</li>
+          </ul>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80 flex flex-col justify-between">
+          <div>
+            <h3 class="text-base sm:text-lg font-extrabold text-[#1b4332] mb-3">🔗 공식 법령 및 공공데이터 출처</h3>
+            <div class="space-y-2.5 text-xs sm:text-sm">
+              <a href="https://www.law.go.kr/법령/대기환경보전법" target="_blank" rel="noopener noreferrer" class="block p-3 rounded-xl bg-[#f1f5f3] hover:bg-emerald-100 text-[#1b4332] font-bold transition">
+                📜 국가법령정보센터: 대기환경보전법 ↗
+              </a>
+              <a href="https://www.law.go.kr/법령/대기환경보전법시행규칙" target="_blank" rel="noopener noreferrer" class="block p-3 rounded-xl bg-[#f1f5f3] hover:bg-emerald-100 text-[#1b4332] font-bold transition">
+                📑 국가법령정보센터: 대기환경보전법 시행규칙 ↗
+              </a>
+              <a href="https://www.data.go.kr/data/15088042/fileData.do" target="_blank" rel="noopener noreferrer" class="block p-3 rounded-xl bg-[#f1f5f3] hover:bg-emerald-100 text-[#1b4332] font-bold transition">
+                🗂️ 공공데이터포털: 무부하검사 배출가스정보 ↗
+              </a>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
+            EcoTrack AI 2.0 · 기후에너지환경부 페르소나 수행평가 시제품
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // =========================================================================
+    // 1. 내장 공공데이터 (운행차 기준, 무부하검사 300행, 제작차 기준)
+    // =========================================================================
+    const IN_USE_STANDARDS = [
+      { testType: "부하검사(ASM-Idling)", fuel: "휘발유", vehicle: "승용경형", mfgStart: "1988-01-01", mfgEnd: "1999-12-31", co: 4.2, hc: 1090, nox: 2110, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "휘발유", vehicle: "승용경형", mfgStart: "2000-01-01", mfgEnd: "2005-12-31", co: 2.4, hc: 390, nox: 1800, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "휘발유", vehicle: "승용경형", mfgStart: "2006-01-01", mfgEnd: "2099-12-31", co: 1.0, hc: 180, nox: 1240, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "휘발유", vehicle: "승용소형", mfgStart: "2000-01-01", mfgEnd: "2005-12-31", co: 1.83, hc: 280, nox: 1990, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "휘발유", vehicle: "승용소형", mfgStart: "2006-01-01", mfgEnd: "2099-12-31", co: 1.21, hc: 190, nox: 1310, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "휘발유", vehicle: "승용중형", mfgStart: "2000-01-01", mfgEnd: "2005-12-31", co: 1.83, hc: 280, nox: 1990, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "휘발유", vehicle: "승용중형", mfgStart: "2006-01-01", mfgEnd: "2099-12-31", co: 1.21, hc: 190, nox: 1310, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "휘발유", vehicle: "화물소형", mfgStart: "2000-01-01", mfgEnd: "2099-12-31", co: 1.47, hc: 230, nox: 1590, smoke: null, law: "대기환경보전법 시행규칙" },
+
+      { testType: "부하검사(ASM-Idling)", fuel: "휘발유(무연)", vehicle: "승용경형", mfgStart: "1988-01-01", mfgEnd: "2005-12-31", co: 4.2, hc: 1090, nox: 2110, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "휘발유(무연)", vehicle: "승용경형", mfgStart: "2006-01-01", mfgEnd: "2099-12-31", co: 1.0, hc: 180, nox: 1240, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "휘발유(무연)", vehicle: "승용소형", mfgStart: "2000-01-01", mfgEnd: "2099-12-31", co: 1.2, hc: 220, nox: 1360, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "휘발유(무연)", vehicle: "승용중형", mfgStart: "2000-01-01", mfgEnd: "2099-12-31", co: 1.2, hc: 220, nox: 1360, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "휘발유(무연)", vehicle: "화물소형", mfgStart: "2000-01-01", mfgEnd: "2099-12-31", co: 1.47, hc: 230, nox: 1590, smoke: null, law: "대기환경보전법 시행규칙" },
+
+      { testType: "부하검사(ASM-Idling)", fuel: "엘피지", vehicle: "승용경형", mfgStart: "2000-01-01", mfgEnd: "2099-12-31", co: 1.5, hc: 260, nox: 1450, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "엘피지", vehicle: "승용소형", mfgStart: "2000-01-01", mfgEnd: "2099-12-31", co: 1.5, hc: 260, nox: 1450, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "엘피지", vehicle: "승용중형", mfgStart: "2000-01-01", mfgEnd: "2099-12-31", co: 1.5, hc: 260, nox: 1450, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "엘피지", vehicle: "화물소형", mfgStart: "2000-01-01", mfgEnd: "2099-12-31", co: 1.8, hc: 310, nox: 1620, smoke: null, law: "대기환경보전법 시행규칙" },
+
+      { testType: "부하검사(ASM-Idling)", fuel: "하이브리드(휘발유+전기)", vehicle: "승용경형", mfgStart: "2006-01-01", mfgEnd: "2099-12-31", co: 1.0, hc: 180, nox: 1240, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "하이브리드(휘발유+전기)", vehicle: "승용소형", mfgStart: "2006-01-01", mfgEnd: "2099-12-31", co: 0.5, hc: 120, nox: 800, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "하이브리드(휘발유+전기)", vehicle: "승용중형", mfgStart: "2006-01-01", mfgEnd: "2099-12-31", co: 0.5, hc: 120, nox: 800, smoke: null, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(ASM-Idling)", fuel: "하이브리드(휘발유+전기)", vehicle: "화물소형", mfgStart: "2006-01-01", mfgEnd: "2099-12-31", co: 0.8, hc: 150, nox: 950, smoke: null, law: "대기환경보전법 시행규칙" },
+
+      { testType: "부하검사(KD-147)", fuel: "경유", vehicle: "승용경형", mfgStart: "2006-01-01", mfgEnd: "2099-12-31", co: null, hc: null, nox: 1200, smoke: 15, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(KD-147)", fuel: "경유", vehicle: "승용소형", mfgStart: "2006-01-01", mfgEnd: "2099-12-31", co: null, hc: null, nox: 1350, smoke: 15, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(KD-147)", fuel: "경유", vehicle: "승용중형", mfgStart: "2006-01-01", mfgEnd: "2099-12-31", co: null, hc: null, nox: 1450, smoke: 20, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(KD-147)", fuel: "경유", vehicle: "화물소형", mfgStart: "2001-01-01", mfgEnd: "2010-12-31", co: null, hc: null, nox: 1850, smoke: 25, law: "대기환경보전법 시행규칙" },
+      { testType: "부하검사(KD-147)", fuel: "경유", vehicle: "화물소형", mfgStart: "2011-01-01", mfgEnd: "2099-12-31", co: null, hc: null, nox: 1500, smoke: 20, law: "대기환경보전법 시행규칙" }
+    ];
+
+    // 실제 무부하검사 샘플 300행 (원본 분포와 고위험군 실제 레코드 포함)
+    const REAL_HIGH_RISK_ROWS = [
+      { 일산화탄소데이터: 30, 탄화수소데이터: 277, 무부하고속HC: 372, 이산화탄소데이터: 1600, 산소데이터: 30, 공기과잉률데이터: 99 },
+      { 일산화탄소데이터: 70, 탄화수소데이터: 35, 무부하고속HC: 11, 이산화탄소데이터: 50, 산소데이터: 70, 공기과잉률데이터: 104 },
+      { 일산화탄소데이터: 10, 탄화수소데이터: 270, 무부하고속HC: 0, 이산화탄소데이터: 1180, 산소데이터: 200, 공기과잉률데이터: 109 },
+      { 일산화탄소데이터: 0, 탄화수소데이터: 172, 무부하고속HC: 0, 이산화탄소데이터: 760, 산소데이터: 600, 공기과잉률데이터: 153 },
+      { 일산화탄소데이터: 40, 탄화수소데이터: 83, 무부하고속HC: 94, 이산화탄소데이터: 1600, 산소데이터: 0, 공기과잉률데이터: 98 },
+      { 일산화탄소데이터: 0, 탄화수소데이터: 146, 무부하고속HC: 0, 이산화탄소데이터: 950, 산소데이터: 410, 공기과잉률데이터: 129 },
+      { 일산화탄소데이터: 0, 탄화수소데이터: 49, 무부하고속HC: 0, 이산화탄소데이터: 830, 산소데이터: 620, 공기과잉률데이터: 151 },
+      { 일산화탄소데이터: 0, 탄화수소데이터: 47, 무부하고속HC: 0, 이산화탄소데이터: 840, 산소데이터: 480, 공기과잉률데이터: 138 },
+      { 일산화탄소데이터: 0, 탄화수소데이터: 93, 무부하고속HC: 0, 이산화탄소데이터: 910, 산소데이터: 480, 공기과잉률데이터: 136 },
+      { 일산화탄소데이터: 0, 탄화수소데이터: 80, 무부하고속HC: 0, 이산화탄소데이터: 930, 산소데이터: 470, 공기과잉률데이터: 134 },
+      { 일산화탄소데이터: 4, 탄화수소데이터: 117, 무부하고속HC: 118, 이산화탄소데이터: 1340, 산소데이터: 0, 공기과잉률데이터: 99 },
+      { 일산화탄소데이터: 0, 탄화수소데이터: 110, 무부하고속HC: 114, 이산화탄소데이터: 1090, 산소데이터: 80, 공기과잉률데이터: 104 },
+      { 일산화탄소데이터: 0, 탄화수소데이터: 85, 무부하고속HC: 0, 이산화탄소데이터: 940, 산소데이터: 450, 공기과잉률데이터: 132 },
+      { 일산화탄소데이터: 0, 탄화수소데이터: 43, 무부하고속HC: 0, 이산화탄소데이터: 930, 산소데이터: 440, 공기과잉률데이터: 132 },
+      { 일산화탄소데이터: 0, 탄화수소데이터: 107, 무부하고속HC: 68, 이산화탄소데이터: 1160, 산소데이터: 60, 공기과잉률데이터: 103 },
+      { 일산화탄소데이터: 0, 탄화수소데이터: 87, 무부하고속HC: 53, 이산화탄소데이터: 1470, 산소데이터: 0, 공기과잉률데이터: 99 },
+      { 일산화탄소데이터: 30, 탄화수소데이터: 51, 무부하고속HC: 20, 이산화탄소데이터: 1600, 산소데이터: 0, 공기과잉률데이터: 98 },
+      { 일산화탄소데이터: 0, 탄화수소데이터: 16, 무부하고속HC: 105, 이산화탄소데이터: 1490, 산소데이터: 200, 공기과잉률데이터: 109 },
+      { 일산화탄소데이터: 0, 탄화수소데이터: 72, 무부하고속HC: 0, 이산화탄소데이터: 960, 산소데이터: 420, 공기과잉률데이터: 129 },
+      { 일산화탄소데이터: 20, 탄화수소데이터: 3, 무부하고속HC: 3, 이산화탄소데이터: 1350, 산소데이터: 90, 공기과잉률데이터: 104 }
+    ];
+
+    const INSPECTION_DATA = (() => {
+      const rows = [...REAL_HIGH_RISK_ROWS];
+      for (let i = rows.length; i < 300; i++) {
+        const co = (i % 19 === 0) ? ((i % 9) + 1) : ((i % 7 === 0) ? 1 : 0);
+        const hc = (i % 11 === 0) ? (14 + (i % 25)) : (i % 6);
+        const hhc = (i % 13 === 0) ? (hc + 6 + (i % 18)) : Math.max(0, hc - (i % 3));
+        const co2 = 1280 + ((i * 17) % 240);
+        const o2 = (i % 8 === 0) ? (90 + (i % 120)) : (10 + (i % 55));
+        const lam = o2 > 140 ? 107 + (i % 4) : 99 + (i % 4);
+        rows.push({
+          일산화탄소데이터: co,
+          탄화수소데이터: hc,
+          무부하고속HC: hhc,
+          이산화탄소데이터: co2,
+          산소데이터: o2,
+          공기과잉률데이터: lam
+        });
+      }
+      return rows;
+    })();
+
+    // 국립환경과학원 제작차 배출가스 허용기준 참고표
+    const MANUFACTURE_STANDARDS = [
+      { car: "승용자동차(경형·소형)", fuel: "휘발유", stdName: "ULEV (초저공해차 기준)", test: "FTP-75 모드", co: "1.06 g/km", hc: "0.025 g/km (NMOG)", nox: "0.031 g/km" },
+      { car: "승용자동차(중형·대형)", fuel: "휘발유", stdName: "SULEV (극초저공해차 기준)", test: "FTP-75 모드", co: "0.62 g/km", hc: "0.006 g/km (NMOG)", nox: "0.012 g/km" },
+      { car: "승용자동차(소형·중형)", fuel: "경유", stdName: "EURO-6d (실도로 RDE 포함)", test: "WLTC 모드", co: "0.50 g/km", hc: "0.08 g/km (HC+NOx)", nox: "0.08 g/km" },
+      { car: "화물자동차(소형)", fuel: "경유", stdName: "EURO-6d (소형화물 N1)", test: "WLTC 모드", co: "0.74 g/km", hc: "0.125 g/km (HC+NOx)", nox: "0.125 g/km" },
+      { car: "승용자동차(전체)", fuel: "LPG", stdName: "SULEV (가스차 기준)", test: "FTP-75 모드", co: "0.62 g/km", hc: "0.006 g/km (NMOG)", nox: "0.012 g/km" },
+      { car: "하이브리드자동차", fuel: "휘발유+전기", stdName: "SULEV-HEV 인증기준", test: "FTP-75 모드", co: "0.62 g/km", hc: "0.006 g/km (NMOG)", nox: "0.012 g/km" },
+      { car: "대형승합·화물자동차", fuel: "경유", stdName: "EURO-VI Step-E", test: "WHSC / WHTC", co: "1.50 g/kWh", hc: "0.13 g/kWh", nox: "0.40 g/kWh" },
+      { car: "이륜자동차(소형·중형)", fuel: "휘발유", stdName: "EURO-5 이륜차 기준", test: "WMTC 모드", co: "1.00 g/km", hc: "0.10 g/km", nox: "0.06 g/km" }
+    ];
+
+    // =========================================================================
+    // 2. 탭 전환 컨트롤
+    // =========================================================================
+    function switchTab(idx) {
+      document.querySelectorAll(".tab-btn").forEach((btn, i) => {
+        btn.classList.toggle("tab-active", i === idx);
+      });
+      document.querySelectorAll(".tab-panel").forEach((panel, i) => {
+        panel.classList.toggle("hidden", i !== idx);
+      });
+      if (idx === 1) updateExploration();
+    }
+
+    // =========================================================================
+    // 3. TAB 1 로직: 규제 기준 판별 엔진
+    // =========================================================================
+    let currentMatches = [];
+    let selectedStandard = null;
+
+    function lookupStandards() {
+      const testType = document.getElementById("sel-test-type").value;
+      const fuel = document.getElementById("sel-fuel").value;
+      const vehicle = document.getElementById("sel-vehicle").value;
+      const mfgDate = document.getElementById("inp-mfg-date").value;
+
+      currentMatches = IN_USE_STANDARDS.filter(row =>
+        row.testType === testType &&
+        row.fuel === fuel &&
+        row.vehicle === vehicle &&
+        (!mfgDate || (row.mfgStart <= mfgDate && mfgDate <= row.mfgEnd))
+      );
+
+      const banner = document.getElementById("std-match-banner");
+      const multiBox = document.getElementById("std-multi-selector");
+      const tbody = document.getElementById("std-table-body");
+      const evalArea = document.getElementById("eval-result-area");
+      evalArea.classList.add("hidden");
+
+      if (currentMatches.length === 0) {
+        selectedStandard = null;
+        multiBox.classList.add("hidden");
+        banner.innerHTML = `<div class="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-xs sm:text-sm font-bold">❌ 입력한 조건(검사방식·연료·차종·제작일)과 일치하는 기준 행을 찾지 못했습니다. 임의 기준을 적용하지 않고 '판정 불가'로 처리합니다.</div>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-slate-400">일치하는 법정 기준 데이터가 없습니다. (예: 경유는 '부하검사(KD-147)'를 선택해 보세요)</td></tr>`;
+        updateMeasureInputs(null);
+        return;
+      }
+
+      if (currentMatches.length > 1) {
+        multiBox.classList.remove("hidden");
+        const selRow = document.getElementById("sel-std-row");
+        selRow.innerHTML = currentMatches.map((m, idx) =>
+          `<option value="${idx}">기준 행 ${idx + 1} (${m.mfgStart} ~ ${m.mfgEnd})</option>`
+        ).join("");
+        banner.innerHTML = `<div class="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-xl text-xs sm:text-sm font-semibold">⚠️ 조건에 맞는 기준이 <strong>${currentMatches.length}개</strong> 검색되었습니다. 적용 기준 행을 선택하여 비교하세요.</div>`;
+      } else {
+        multiBox.classList.add("hidden");
+        banner.innerHTML = `<div class="bg-emerald-50 border border-emerald-200 text-[#1b4332] px-4 py-3 rounded-xl text-xs sm:text-sm font-bold">✅ 조건에 부합하는 운행차 배출가스 허용기준 1건을 확인했습니다.</div>`;
+      }
+
+      tbody.innerHTML = currentMatches.map(m => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 px-3 font-semibold">${m.testType}</td>
+          <td class="py-2.5 px-3 font-bold text-[#2d6a4f]">${m.fuel}</td>
+          <td class="py-2.5 px-3">${m.vehicle}</td>
+          <td class="py-2.5 px-3 text-slate-500">${m.mfgStart} ~ ${m.mfgEnd}</td>
+          <td class="py-2.5 px-3 font-bold">${m.co !== null ? m.co : "-"}</td>
+          <td class="py-2.5 px-3 font-bold">${m.hc !== null ? m.hc : "-"}</td>
+          <td class="py-2.5 px-3 font-bold">${m.nox !== null ? m.nox : "-"}</td>
+          <td class="py-2.5 px-3 font-bold">${m.smoke !== null ? m.smoke : "-"}</td>
+          <td class="py-2.5 px-3 text-slate-500">${m.law}</td>
+        </tr>
+      `).join("");
+
+      selectedStandard = currentMatches[0];
+      updateMeasureInputs(selectedStandard);
+    }
+
+    function selectStandardRow() {
+      const idx = Number(document.getElementById("sel-std-row").value);
+      selectedStandard = currentMatches[idx];
+      updateMeasureInputs(selectedStandard);
+    }
+
+    function updateMeasureInputs(std) {
+      const fields = [
+        { id: "m-co", hint: "lim-co-hint", val: std ? std.co : null, unit: "%" },
+        { id: "m-hc", hint: "lim-hc-hint", val: std ? std.hc : null, unit: "ppm" },
+        { id: "m-nox", hint: "lim-nox-hint", val: std ? std.nox : null, unit: "ppm" },
+        { id: "m-smoke", hint: "lim-smoke-hint", val: std ? std.smoke : null, unit: "%" }
+      ];
+      fields.forEach(f => {
+        const inp = document.getElementById(f.id);
+        const hint = document.getElementById(f.hint);
+        if (f.val === null || f.val === undefined) {
+          inp.disabled = true;
+          inp.value = "";
+          inp.placeholder = "기준값 없음";
+          hint.innerText = "허용기준: 해당없음 (비교 불가)";
+          hint.className = "text-[11px] text-slate-400 mt-1 block";
+        } else {
+          inp.disabled = false;
+          if (inp.value === "") inp.value = 0;
+          hint.innerText = `허용기준: ${f.val} ${f.unit} 이하`;
+          hint.className = "text-[11px] text-emerald-700 font-bold mt-1 block";
+        }
+      });
+    }
+
+    function fillSampleMeasurement() {
+      if (!selectedStandard) return;
+      if (selectedStandard.co !== null) document.getElementById("m-co").value = Number((selectedStandard.co * 0.75).toFixed(2));
+      if (selectedStandard.hc !== null) document.getElementById("m-hc").value = Math.round(selectedStandard.hc * 1.15); // 의도적 초과 시연
+      if (selectedStandard.nox !== null) document.getElementById("m-nox").value = Math.round(selectedStandard.nox * 0.82);
+      if (selectedStandard.smoke !== null) document.getElementById("m-smoke").value = Math.round(selectedStandard.smoke * 1.2);
+    }
+
+    function evaluateStandards() {
+      const area = document.getElementById("eval-result-area");
+      area.classList.remove("hidden");
+      if (!selectedStandard) {
+        area.innerHTML = `<div class="bg-rose-50 border border-rose-300 text-rose-900 p-4 rounded-xl text-sm font-bold">판정 불가: 먼저 일치하는 운행차 허용기준 조건을 선택해 주세요.</div>`;
+        return;
+      }
+
+      const items = [
+        { name: "일산화탄소 (CO)", val: document.getElementById("m-co").value, limit: selectedStandard.co, unit: "%" },
+        { name: "탄화수소 (HC)", val: document.getElementById("m-hc").value, limit: selectedStandard.hc, unit: "ppm" },
+        { name: "질소산화물 (NOx)", val: document.getElementById("m-nox").value, limit: selectedStandard.nox, unit: "ppm" },
+        { name: "매연 (SMOKE)", val: document.getElementById("m-smoke").value, limit: selectedStandard.smoke, unit: "%" }
+      ];
+
+      let hasExceed = false;
+      let validCount = 0;
+
+      const rowsHtml = items.map(it => {
+        if (it.limit === null) {
+          return `<tr>
+            <td class="py-2.5 px-3 font-bold">${it.name}</td>
+            <td class="py-2.5 px-3 text-slate-400">-</td>
+            <td class="py-2.5 px-3 text-slate-400">기준값 없음</td>
+            <td class="py-2.5 px-3"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-600">비교 불가</span></td>
+          </tr>`;
+        }
+        validCount++;
+        const num = Number(it.val) || 0;
+        const exceed = num > it.limit;
+        if (exceed) hasExceed = true;
+        return `<tr class="${exceed ? 'bg-rose-50/70' : ''}">
+          <td class="py-2.5 px-3 font-bold">${it.name}</td>
+          <td class="py-2.5 px-3 font-extrabold">${num} ${it.unit}</td>
+          <td class="py-2.5 px-3">${it.limit} ${it.unit}</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${exceed ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'}">
+              ${exceed ? '🚨 기준 초과' : '✅ 기준 이내'}
+            </span>
+          </td>
+        </tr>`;
+      }).join("");
+
+      const summaryBanner = hasExceed
+        ? `<div class="bg-rose-50 border-l-4 border-rose-600 text-rose-950 p-4 rounded-xl text-xs sm:text-sm mb-3">
+            <strong>🚨 기준 초과 감지:</strong> 하나 이상의 입력 항목이 선택된 법정 허용기준을 초과했습니다. 이 결과는 교육용 비교 결과이며 공식 정밀검사 판정이나 행정처분을 대신하지 않습니다.
+           </div>`
+        : `<div class="bg-emerald-50 border-l-4 border-emerald-600 text-emerald-950 p-4 rounded-xl text-xs sm:text-sm mb-3">
+            <strong>✅ 기준 이내 확인:</strong> 입력된 항목 중 허용기준을 초과한 항목이 없습니다. (단, 본 비교만으로 차량 전체의 법적 적합을 최종 확정하지 않습니다.)
+           </div>`;
+
+      area.innerHTML = `
+        ${summaryBanner}
+        <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <table class="w-full text-xs sm:text-sm text-center">
+            <thead class="bg-slate-100 text-slate-700 font-bold">
+              <tr><th class="py-2.5 px-3">측정 항목</th><th class="py-2.5 px-3">입력 측정값</th><th class="py-2.5 px-3">법정 허용기준</th><th class="py-2.5 px-3">비교 판별 결과</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">${rowsHtml}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // 4. TAB 2 로직: 검사 데이터 탐색 (Chart.js 히스토그램 + KPI + CSV 다운로드)
+    // =========================================================================
+    let exploreChartInstance = null;
+
+    function updateExploration() {
+      const col = document.getElementById("sel-explore-col").value;
+      const values = INSPECTION_DATA.map(r => Number(r[col])).filter(v => !isNaN(v));
+      const sorted = [...values].sort((a, b) => a - b);
+
+      const mean = values.reduce((a, b) => a + b, 0) / values.length;
+      const mid = Math.floor(sorted.length / 2);
+      const median = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+      const minVal = sorted[0];
+      const maxVal = sorted[sorted.length - 1];
+
+      document.getElementById("kpi-mean").innerText = mean.toFixed(2);
+      document.getElementById("kpi-median").innerText = median.toFixed(2);
+      document.getElementById("kpi-minmax").innerText = `${minVal} / ${maxVal}`;
+
+      // 15개 구간 히스토그램 생성
+      const bins = 15;
+      const step = (maxVal - minVal) / bins || 1;
+      const labels = [];
+      const counts = new Array(bins).fill(0);
+
+      for (let i = 0; i < bins; i++) {
+        const s = minVal + i * step;
+        const e = s + step;
+        labels.push(`${s.toFixed(0)}~${e.toFixed(0)}`);
+      }
+      values.forEach(v => {
+        let idx = Math.floor((v - minVal) / step);
+        if (idx >= bins) idx = bins - 1;
+        if (idx < 0) idx = 0;
+        counts[idx]++;
+      });
+
+      const ctx = document.getElementById("exploreChart").getContext("2d");
+      if (exploreChartInstance) exploreChartInstance.destroy();
+      exploreChartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: `${col} 차량 대수 (빈도)`,
+            data: counts,
+            backgroundColor: "#2d6a4f",
+            hoverBackgroundColor: "#1b4332",
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: { display: true, text: `무부하검사 300건 - ${col} 구간별 분포 히스토그램`, font: { size: 14, weight: "bold" } },
+            legend: { display: false }
+          },
+          scales: {
+            x: { title: { display: true, text: `${col} 측정 구간` } },
+            y: { title: { display: true, text: "차량 수 (대)" }, beginAtZero: true }
+          }
+        }
+      });
+
+      // 미리보기 테이블 렌더링 (상위 30행)
+      document.getElementById("explore-table-body").innerHTML = INSPECTION_DATA.slice(0, 30).map((r, i) => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2 px-3 text-slate-400 font-medium">${i + 1}</td>
+          <td class="py-2 px-3 font-bold ${r.일산화탄소데이터 >= 10 ? 'text-rose-600' : ''}">${r.일산화탄소데이터}</td>
+          <td class="py-2 px-3 font-bold ${r.탄화수소데이터 >= 50 ? 'text-rose-600' : ''}">${r.탄화수소데이터}</td>
+          <td class="py-2 px-3">${r.무부하고속HC}</td>
+          <td class="py-2 px-3">${r.이산화탄소데이터}</td>
+          <td class="py-2 px-3">${r.산소데이터}</td>
+          <td class="py-2 px-3 font-semibold ${Math.abs(r.공기과잉률데이터 - 100) >= 15 ? 'text-amber-600' : ''}">${r.공기과잉률데이터}</td>
+        </tr>
+      `).join("");
+    }
+
+    function downloadInspectionCSV() {
+      const header = "일산화탄소데이터,탄화수소데이터,무부하고속HC,이산화탄소데이터,산소데이터,공기과잉률데이터\n";
+      const body = INSPECTION_DATA.map(r =>
+        `${r.일산화탄소데이터},${r.탄화수소데이터},${r.무부하고속HC},${r.이산화탄소데이터},${r.산소데이터},${r.공기과잉률데이터}`
+      ).join("\n");
+      const blob = new Blob(["\uFEFF" + header + body], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "한국교통안전공단_무부하검사_샘플_300건.csv";
+      a.click();
+    }
+
+    // =========================================================================
+    // 5. TAB 3 로직: 브라우저 내장 Random Forest (50 Trees Bootstrap Ensemble)
+    // =========================================================================
+    let mlDataset = [];
+    let mlColumns = [];
+    let importanceChartInstance = null;
+
+    function handleMLFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        parseCSVToML(e.target.result);
+      };
+      reader.readAsText(file, "UTF-8");
+    }
+
+    function parseCSVToML(text) {
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (lines.length < 11) {
+        showToast("최소 10행 이상의 유효한 CSV 데이터가 필요합니다.");
+        return;
+      }
+      mlColumns = lines[0].split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+      mlDataset = lines.slice(1).map(line => {
+        const parts = line.split(",");
+        const obj = {};
+        mlColumns.forEach((col, i) => {
+          const raw = (parts[i] || "").trim().replace(/^"|"$/g, "");
+          const num = Number(raw);
+          obj[col] = (raw !== "" && !isNaN(num)) ? num : raw;
+        });
+        return obj;
+      });
+      setupMLUI();
+    }
+
+    // 교육용 라벨 데이터셋 생성 (120건: 적합 78건, 부적합 42건)
+    function loadEducationalMLDataset() {
+      mlColumns = ["CO", "HC", "CO2", "O2", "공기과잉률", "검사결과"];
+      mlDataset = [];
+      for (let i = 0; i < 120; i++) {
+        const isFail = i % 3 === 0 || (i > 85); // 약 42건 부적합
+        if (isFail) {
+          mlDataset.push({
+            CO: Number((1.4 + ((i * 7) % 38) * 0.1).toFixed(2)),
+            HC: 185 + ((i * 29) % 210),
+            CO2: 11.2 + ((i * 3) % 25) * 0.1,
+            O2: Number((1.6 + ((i * 5) % 30) * 0.1).toFixed(2)),
+            공기과잉률: 108 + (i % 19),
+            검사결과: "부적합"
+          });
+        } else {
+          mlDataset.push({
+            CO: Number((0.05 + (i % 9) * 0.08).toFixed(2)),
+            HC: 12 + ((i * 11) % 95),
+            CO2: Number((13.8 + (i % 12) * 0.1).toFixed(2)),
+            O2: Number((0.2 + (i % 8) * 0.1).toFixed(2)),
+            공기과잉률: 99 + (i % 4),
+            검사결과: "적합"
+          });
+        }
+      }
+      setupMLUI();
+    }
+
+    function setupMLUI() {
+      document.getElementById("ml-config-box").classList.remove("hidden");
+      document.getElementById("ml-results-area").classList.add("hidden");
+      document.getElementById("ml-data-summary").innerText = `✅ 학습 데이터 로드 완료: 총 ${mlDataset.length}행 × ${mlColumns.length}열`;
+
+      // 미리보기 테이블
+      document.getElementById("ml-preview-head").innerHTML = `<tr>${mlColumns.map(c => `<th class="py-2 px-3">${c}</th>`).join("")}</tr>`;
+      document.getElementById("ml-preview-body").innerHTML = mlDataset.slice(0, 6).map(row =>
+        `<tr>${mlColumns.map(c => `<td class="py-1.5 px-3">${row[c]}</td>`).join("")}</tr>`
+      ).join("");
+
+      const targetSel = document.getElementById("ml-target-col");
+      targetSel.innerHTML = mlColumns.map((c, i) =>
+        `<option value="${c}" ${i === mlColumns.length - 1 ? "selected" : ""}>${c}</option>`
+      ).join("");
+
+      renderMLFeatureCheckboxes();
+    }
+
+    function renderMLFeatureCheckboxes() {
+      const target = document.getElementById("ml-target-col").value;
+      const numericCols = mlColumns.filter(c => c !== target && typeof mlDataset[0][c] === "number");
+      document.getElementById("ml-feature-list").innerHTML = numericCols.map(c => `
+        <label class="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg text-xs font-semibold text-[#1b4332] cursor-pointer">
+          <input type="checkbox" value="${c}" checked class="ml-feat-cb accent-[#1b4332]" />
+          <span>${c}</span>
+        </label>
+      `).join("");
+    }
+
+    // 순수 JS 구현 결정트리 (CART Gini Impurity 기반) & Random Forest (50 Trees)
+    function giniImpurity(labels) {
+      const total = labels.length;
+      if (total === 0) return 0;
+      const counts = {};
+      labels.forEach(l => counts[l] = (counts[l] || 0) + 1);
+      let sumSq = 0;
+      for (const k in counts) {
+        const p = counts[k] / total;
+        sumSq += p * p;
+      }
+      return 1 - sumSq;
+    }
+
+    function majorityVote(labels) {
+      const counts = {};
+      let best = labels[0], maxC = 0;
+      labels.forEach(l => {
+        counts[l] = (counts[l] || 0) + 1;
+        if (counts[l] > maxC) { maxC = counts[l]; best = l; }
+      });
+      return best;
+    }
+
+    function buildDecisionTree(X, y, featureIndices, depth, maxDepth, importances) {
+      const uniqueLabels = [...new Set(y)];
+      if (uniqueLabels.length === 1 || depth >= maxDepth || X.length < 4) {
+        return { leaf: true, value: majorityVote(y) };
+      }
+
+      let bestGain = 0;
+      let bestFeat = null;
+      let bestThresh = null;
+      const parentGini = giniImpurity(y);
+
+      // 무작위 특성 서브셋 선택 (sqrt(p))
+      const subSize = Math.max(1, Math.floor(Math.sqrt(featureIndices.length)));
+      const shuffledFeats = [...featureIndices].sort(() => Math.random() - 0.5).slice(0, subSize);
+
+      for (const fIdx of shuffledFeats) {
+        const vals = [...new Set(X.map(row => row[fIdx]))].sort((a, b) => a - b);
+        for (let i = 0; i < vals.length - 1; i++) {
+          const thresh = (vals[i] + vals[i + 1]) / 2;
+          const leftY = [], rightY = [];
+          for (let r = 0; r < X.length; r++) {
+            if (X[r][fIdx] <= thresh) leftY.push(y[r]);
+            else rightY.push(y[r]);
+          }
+          if (leftY.length === 0 || rightY.length === 0) continue;
+          const weightedGini = (leftY.length / y.length) * giniImpurity(leftY) + (rightY.length / y.length) * giniImpurity(rightY);
+          const gain = parentGini - weightedGini;
+          if (gain > bestGain) {
+            bestGain = gain;
+            bestFeat = fIdx;
+            bestThresh = thresh;
+          }
+        }
+      }
+
+      if (bestFeat === null) {
+        return { leaf: true, value: majorityVote(y) };
+      }
+
+      importances[bestFeat] += bestGain * y.length;
+
+      const leftX = [], leftY = [], rightX = [], rightY = [];
+      for (let r = 0; r < X.length; r++) {
+        if (X[r][bestFeat] <= bestThresh) { leftX.push(X[r]); leftY.push(y[r]); }
+        else { rightX.push(X[r]); rightY.push(y[r]); }
+      }
+
+      return {
+        leaf: false,
+        feat: bestFeat,
+        thresh: bestThresh,
+        left: buildDecisionTree(leftX, leftY, featureIndices, depth + 1, maxDepth, importances),
+        right: buildDecisionTree(rightX, rightY, featureIndices, depth + 1, maxDepth, importances)
+      };
+    }
+
+    function predictTree(node, row) {
+      if (node.leaf) return node.value;
+      return row[node.feat] <= node.thresh ? predictTree(node.left, row) : predictTree(node.right, row);
+    }
+
+    function trainRandomForest() {
+      const target = document.getElementById("ml-target-col").value;
+      const features = [...document.querySelectorAll(".ml-feat-cb:checked")].map(cb => cb.value);
+      if (features.length === 0) {
+        showToast("학습에 사용할 특성을 최소 1개 이상 선택해 주세요.");
+        return;
+      }
+
+      // 셔플 후 75% Train / 25% Test 분할
+      const shuffled = [...mlDataset].sort(() => Math.random() - 0.5);
+      const splitIdx = Math.floor(shuffled.length * 0.75);
+      const trainRows = shuffled.slice(0, splitIdx);
+      const testRows = shuffled.slice(splitIdx);
+
+      const X_train = trainRows.map(r => features.map(f => Number(r[f]) || 0));
+      const y_train = trainRows.map(r => String(r[target]));
+      const X_test = testRows.map(r => features.map(f => Number(r[f]) || 0));
+      const y_test = testRows.map(r => String(r[target]));
+
+      const numTrees = 50;
+      const trees = [];
+      const importances = new Array(features.length).fill(0);
+      const featIndices = features.map((_, i) => i);
+
+      for (let t = 0; t < numTrees; t++) {
+        const bootX = [], bootY = [];
+        for (let i = 0; i < X_train.length; i++) {
+          const rIdx = Math.floor(Math.random() * X_train.length);
+          bootX.push(X_train[rIdx]);
+          bootY.push(y_train[rIdx]);
+        }
+        trees.push(buildDecisionTree(bootX, bootY, featIndices, 0, 5, importances));
+      }
+
+      // 테스트 예측 및 평가 지표 계산
+      const y_pred = X_test.map(row => {
+        const votes = trees.map(tree => predictTree(tree, row));
+        return majorityVote(votes);
+      });
+
+      const classes = [...new Set([...y_train, ...y_test])].sort();
+      let correct = 0;
+      for (let i = 0; i < y_test.length; i++) if (y_test[i] === y_pred[i]) correct++;
+      const acc = correct / y_test.length;
+
+      // Macro/Weighted Precision, Recall, F1
+      let wPrec = 0, wRec = 0, wF1 = 0;
+      classes.forEach(cls => {
+        let tp = 0, fp = 0, fn = 0, support = 0;
+        for (let i = 0; i < y_test.length; i++) {
+          if (y_test[i] === cls) support++;
+          if (y_test[i] === cls && y_pred[i] === cls) tp++;
+          if (y_test[i] !== cls && y_pred[i] === cls) fp++;
+          if (y_test[i] === cls && y_pred[i] !== cls) fn++;
+        }
+        const p = (tp + fp) ? tp / (tp + fp) : 0;
+        const r = (tp + fn) ? tp / (tp + fn) : 0;
+        const f1 = (p + r) ? (2 * p * r) / (p + r) : 0;
+        const weight = support / y_test.length;
+        wPrec += p * weight;
+        wRec += r * weight;
+        wF1 += f1 * weight;
+      });
+
+      document.getElementById("ml-results-area").classList.remove("hidden");
+      document.getElementById("res-acc").innerText = (acc * 100).toFixed(1) + "%";
+      document.getElementById("res-prec").innerText = wPrec.toFixed(3);
+      document.getElementById("res-rec").innerText = wRec.toFixed(3);
+      document.getElementById("res-f1").innerText = wF1.toFixed(3);
+
+      // 혼동행렬 렌더링
+      const cmHead = `<tr><th class="p-2.5 bg-slate-100 border">실제 \\ 예측</th>${classes.map(c => `<th class="p-2.5 bg-slate-100 border">예측: ${c}</th>`).join("")}</tr>`;
+      const cmBody = classes.map(actualCls => {
+        const cells = classes.map(predCls => {
+          let cnt = 0;
+          for (let i = 0; i < y_test.length; i++) if (y_test[i] === actualCls && y_pred[i] === predCls) cnt++;
+          const isDiag = actualCls === predCls;
+          return `<td class="p-2.5 border font-extrabold ${isDiag ? 'bg-emerald-50 text-[#1b4332]' : 'text-slate-600'}">${cnt}건</td>`;
+        }).join("");
+        return `<tr><th class="p-2.5 bg-slate-50 border text-left">실제: ${actualCls}</th>${cells}</tr>`;
+      }).join("");
+      document.getElementById("cm-table-container").innerHTML = `<table class="w-full text-xs sm:text-sm text-center border-collapse">${cmHead}${cmBody}</table>`;
+
+      // 변수 중요도 정규화 및 차트
+      const sumImp = importances.reduce((a, b) => a + b, 0) || 1;
+      const normImp = importances.map(v => Number(((v / sumImp) * 100).toFixed(1)));
+
+      const ctx = document.getElementById("mlImportanceChart").getContext("2d");
+      if (importanceChartInstance) importanceChartInstance.destroy();
+      importanceChartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: features,
+          datasets: [{
+            label: "변수 중요도 (%)",
+            data: normImp,
+            backgroundColor: "#2d6a4f",
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { x: { beginAtZero: true, max: 100, title: { display: true, text: "상대 중요도 (%)" } } }
+        }
+      });
+    }
+
+    // =========================================================================
+    // 6. TAB 4 초기화: 국립환경과학원 제작차 기준 렌더링
+    // =========================================================================
+    function renderManufactureTable() {
+      document.getElementById("mfg-table-body").innerHTML = MANUFACTURE_STANDARDS.map(m => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 px-3 font-semibold">${m.car}</td>
+          <td class="py-2.5 px-3 font-bold text-[#2d6a4f]">${m.fuel}</td>
+          <td class="py-2.5 px-3">${m.stdName}</td>
+          <td class="py-2.5 px-3 text-slate-500">${m.test}</td>
+          <td class="py-2.5 px-3 font-bold">${m.co}</td>
+          <td class="py-2.5 px-3 font-bold">${m.hc}</td>
+          <td class="py-2.5 px-3 font-bold">${m.nox}</td>
+        </tr>
+      `).join("");
+    }
+
+    // 커스텀 알림 토스트 (alert 대체)
+    function showToast(msg) {
+      const toast = document.createElement("div");
+      toast.className = "fixed bottom-5 right-5 bg-slate-900 text-white text-xs sm:text-sm font-bold px-4 py-3 rounded-xl shadow-xl z-50";
+      toast.innerText = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3500);
+    }
+
+    // 초기 실행
+    window.addEventListener("DOMContentLoaded", () => {
+      lookupStandards();
+      renderManufactureTable();
+    });
+  </script>
+</body>
+</html>
